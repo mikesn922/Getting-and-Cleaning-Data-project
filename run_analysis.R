@@ -17,21 +17,26 @@ mergeAll <- cbind(mergeSubject, mergeLabel, mergeData)
 
 #2.1 Extracts the names of the measurements contain "mean()" or "std()"
 features <- data.table(read.table("./UCI HAR Dataset/features.txt"))
-names(mergeAll) <- c("subject", "activity_label", as.character(features[[2]]))
+names(mergeAll) <- c("subject", "activity", as.character(features[[2]]))
 subsetNamesMean <- features[like(V2, "mean\\(\\)")]
 subsetNamesStd <- features[like(V2, "std\\(\\)")]
 subsetNames <- rbindlist(list(subsetNamesMean, subsetNamesStd))
 
 #2.2 select the targeted columns, including the subject and the label columns
-meanStdData <- mergeAll[, c("subject", "activity_label", as.character(subsetNames[[2]])), with=FALSE]
+meanStdData <- mergeAll[, c("subject", "activity", as.character(subsetNames[[2]])), with=FALSE]
 
 #3 Uses descriptive activity names to name the activities in the data set
 activityLabels <- data.table(read.table("./UCI HAR Dataset/activity_labels.txt"))
-meanStdData[, activity_label := activityLabels[meanStdData$activity_label, .(V2),], ]
+meanStdData[, activity := activityLabels[meanStdData$activity, .(V2),], ]
 
-#4 Appropriately labels the data set with descriptive variable names (Done before)
+#4 Appropriately labels the data set with descriptive variable names
+names(meanStdData) <- tolower(names(meanStdData))
+names(meanStdData) <- gsub("\\(\\)|-", "", names(meanStdData))
+meanStdData[, activity:=lapply(meanStdData$activity, tolower)]
+meanStdData[, activity:=gsub("\"|_", "", meanStdData$activity)]
 
 #5 From the data set in step 4, creates a second, independent tidy data set with the average of each variable for each activity and each subject
-tidyAverage <- meanStdData[, lapply(.SD, mean, na.rm = TRUE), by= list(subject, activity_label), .SDcols = 3:ncol(meanStdData)]
+tidyAverage <- meanStdData[, lapply(.SD, mean, na.rm = TRUE), by= list(subject, activity), .SDcols = 3:ncol(meanStdData)]
+
 #output final tidy data table
 write.table(tidyAverage, "finalTidyData.txt", row.name=FALSE)
